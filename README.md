@@ -118,7 +118,7 @@ What the port reproduces, from that file:
 | `call CelebiEvent_Cosine` | `SpriteAnims.cosine` — the engine's transcription of the same `calc_sine_wave` |
 | `.float_up` / `.float_down` | the same two-arm test on `XCOORD + XOFFSET` |
 | facing by `XCOORD + XOFFSET` vs the centre | the same test against `10 * 8` |
-| `GetCelebiSpriteTile` | the cart's four-frame graphic, supplied as `assets/celebi.png`, stepped on the cart's own 3/6/9/12 counter |
+| `GetCelebiSpriteTile` | the cart's four-frame graphic, shipped as `assets/celebi.png`, stepped on the cart's own 3/6/9/12 counter |
 | `.RestorePlayerSprite_DespawnLeaves` | the spawned object is removed |The animation is driven from `World:step` — the one per-frame seam the overworld
 offers a mod (`src/core/Game2.lua:1272`) — and the world reports **busy** for its
 duration, so no press, menu or second step can land mid-descent.
@@ -139,17 +139,15 @@ the cart draws.
 
 - The cart's descent sprite is a bespoke 16-tile, 4-frame graphic
   (`gfx/overworld/celebi.2bpp`), loaded into `vTiles0` for this one animation,
-  and Gold has neither it nor the event. The port needs that graphic --
-  `assets/celebi.png`, four 16x16 frames stacked, re-cut in the four-shade form
-  this engine bakes (see *Celebi's colours* below) -- and it is the one thing
-  the mod does **not** ship, because it is Nintendo's art. `assets/README.md`
-  says what to drop in and where, and `tools/author_celebi_sheet.py` is the
-  recipe that makes it from your own copy of the cart's sheet. Every earlier
-  version used the species' extracted **16x16 party icon** instead, which is a
-  two-frame front-facing party picture and never looked like the sprite in the
-  game. The cart's left/right facing is shown by mirroring the frame rather than
-  by the cart's `FRAMESET_CELEBI_LEFT`/`RIGHT`, and with no sheet at all the
-  descent still runs -- it simply has no sprite in it.
+  and Gold has neither it nor the event. The port carries that graphic:
+  `assets/celebi.png` is it, four 16x16 frames stacked, re-cut in the four-shade
+  form this engine bakes (see *Celebi's colours* below) -- and because the
+  colours come from the palette and not from the file, **one sheet serves all
+  three carts**. Every earlier version used the species' extracted **16x16 party
+  icon** instead, which is a two-frame front-facing party picture and never
+  looked like the sprite in the game. The cart's left/right facing is shown by
+  mirroring the frame rather than by the cart's
+  `FRAMESET_CELEBI_LEFT`/`RIGHT`.
 - The cart's coordinates are absolute **screen** pixels (`depixel 0, 10` →
   OAM 88, 8). The port anchors to the shrine tile instead, which is the same
   position with the camera factored out — the camera is static for the whole
@@ -210,18 +208,29 @@ Three pieces of engine machinery are reused rather than reinvented:
   `waitsfx / specialsound`, so the jingle starts with the received line already  
   on screen.
 
-### The one file you supply
+### The one picture it ships
 
-Everything above describes a sheet that is **not in this repo**. It is the cart's
-own graphic, so it is Nintendo's, and the mod leaves it to the player:
-`assets/README.md` says exactly what the file has to be and where it goes, and
-`tools/author_celebi_sheet.py` is the recipe that produces it from your own copy
-of the cart's sheet.
+Everything above describes `assets/celebi.png`, and that file is **in this repo**:
+four 16×16 frames, the cart's own 16×64 graphic re-cut in the four-shade form the
+bake needs. One sheet, and it draws correctly on Gold, Silver and Crystal alike,
+because the colours come from the palette rather than from the file (see *Celebi's
+colours*).
 
-Nothing else depends on it. The shrine event runs end to end without the file --
-the "!", the step back, the 160-iteration descent, the tear-down and the Lv30
-battle are all code -- the descent simply has no sprite in it, and the mod says
-so once in the log. The event is the cutscene and the battle, not the picture.
+It is Nintendo's art, and carrying it is a knowing trade rather than an
+oversight. The engine's extractor cannot produce the sheet -- Celebi's graphic is
+not a row of `OverworldSprites`, it is copied into `vTiles0` by `SpecialCelebiGFX`
+for that one animation, so Gold has nothing to cut -- which means the choice was
+never "ship it or derive it", it was "ship it or ship a descent with no Celebi in
+it". Versions 1.4.5 and 1.4.6 took the second road and that is what players saw.
+`assets/README.md` records where the file comes from and what it has to be, and
+`tools/author_celebi_sheet.py` re-derives it byte for byte from a cart's own copy
+for anyone who would rather build it than download it.
+
+Nothing depends on it being there. Delete the file and the shrine event still runs
+end to end -- the "!", the step back, the 160-iteration descent, the tear-down and
+the Lv30 battle are all code -- the descent simply has no sprite in it, and the mod
+says so once in the log. The event is the cutscene and the battle, not the
+picture.
 
 ### The house swap
 
@@ -453,13 +462,13 @@ in code. `/.probe/targets_probe.lua` runs the engine's own gate for each game.
 
 ## Releasing it, and the launcher's auto-update
 
-A release is a **tag**, not a committed file. Pushing `v1.4.6` runs
+A release is a **tag**, not a committed file. Pushing `v1.4.7` runs
 `.github/workflows/release.yml`, which builds the zip from the tagged tree and
 attaches it to the GitHub Release:
 
 ```sh
-git tag v1.4.6
-git push origin v1.4.6
+git tag v1.4.7
+git push origin v1.4.7
 ```
 
 The tag and `manifest.json`'s `version` have to agree, and the workflow refuses
@@ -473,7 +482,7 @@ tags, and looks for an asset named **exactly** `<mod-id>-<version>.zip`.
 This mod's id is `celebi_event` -- **with an underscore** -- while the repo and
 the mod folder are `celebi-event`. That is not cosmetic. `pickZipAsset`
 compares the asset name to the id exactly, and its only other rule is a
-lowercase prefix match on the id, so `celebi-event-1.4.6.zip` satisfies
+lowercase prefix match on the id, so `celebi-event-1.4.7.zip` satisfies
 neither and survives only on the last-resort "any .zip" branch, which returns
 whichever `.zip` comes first in the release's asset array. That works while the
 release carries one zip and starts picking the wrong file the moment a second

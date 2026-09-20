@@ -37,6 +37,12 @@ return {
         .. "them.  A Gen 2 mod cannot add a coord event, so the mod watches "
         .. "world.stepped for the same tiles and stands the exit warp down for "
         .. "the frame.",
+      "Celebi's descent sprite is a re-cut of the cart's own overworld "
+        .. "graphic, so it is Nintendo's art, and it is carried in the package "
+        .. "because nothing can derive it: the engine's importer never writes "
+        .. "an overworld sheet for Celebi, on any cart.  Delete "
+        .. "assets/celebi.png and the shrine event still runs, minus the "
+        .. "sprite.",
       "Runs on all three Gen 2 carts.  Crystal already carries the GS BALL in its own item list, so there the mod does not register a second one -- the cart's own record is used -- and everything else runs, both switches included.  The question asked is the capability, not the cart: does this ROM already carry the GS BALL?",
     },
   },

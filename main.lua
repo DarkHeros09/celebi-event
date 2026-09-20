@@ -1262,16 +1262,19 @@ local function signedByte(value)
   return n
 end
 
--- The descent sprite -- the player's own file in assets/, not shipped with the
--- mod -- four 16x16 frames, one per step
+-- The descent sprite, shipped in assets/ -- four 16x16 frames, one per step
 -- of the cart's GetCelebiSpriteTile, re-cut from the cart's own 16x64
 -- overworld sheet (`gfx/overworld/celebi.2bpp`, engine/events/celebi.asm,
 -- SpecialCelebiGFX).
 --
--- Gold has NO Celebi overworld sprite of its own to cut at runtime -- the
--- constant is Crystal's -- so this is the one picture the mod carries.  It is
--- NOT a party icon standing in for Celebi (every version through 1.3.x), and
--- NOT a true-colour drawing either (1.4.0 and 1.4.1): see the sprite
+-- It is CARRIED rather than derived, and there is no alternative: Gold has no
+-- Celebi overworld sprite of its own -- the constant is Crystal's, and the
+-- graphic is not a row of OverworldSprites, so the engine's extractor never
+-- writes one and no import contains one.  One sheet serves all three carts,
+-- because the colours come from the palette and not from the file.
+--
+-- It is NOT a party icon standing in for Celebi (every version through 1.3.x),
+-- and NOT a true-colour drawing either (1.4.0 and 1.4.1): see the sprite
 -- definition in ensureCelebiSprite for why the colours have to come from the
 -- game's own palette rather than from the PNG.
 local CELEBI_SHEET = "assets/celebi.png"
@@ -1290,13 +1293,14 @@ local function celebiSheetPath(mod)
   return CELEBI_SHEET
 end
 
--- Is the player's sheet actually installed?
+-- Is the sheet actually there?
 --
--- The sheet is deliberately NOT shipped (see assets/README.md): it is a re-cut
--- of the cart's own overworld graphic, so it is Nintendo's, and this mod leaves
--- it to the player rather than redistributing it.  mod.assets:info is the
--- sandboxed existence test -- it resolves inside the mod's own directory and
--- answers nil for anything that is not there.
+-- It ships with the mod (see assets/README.md), so this is the case where the
+-- file has gone missing -- a bad install, or a player who deleted it.  Still
+-- worth asking: it is the one file whose absence leaves the rest of the mod
+-- working, so the descent should notice and carry on rather than throw.
+-- mod.assets:info is the sandboxed existence test -- it resolves inside the
+-- mod's own directory and answers nil for anything that is not there.
 --
 -- When the API is unavailable there is nothing to ask, so the old behaviour
 -- stands and the definition is built anyway.

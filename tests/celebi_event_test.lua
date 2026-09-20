@@ -142,15 +142,15 @@ local files = {
     readFile(MOD_DIR .. "/manifest.json"),
   ["mods/celebi_event/main.lua"] = readFile(MOD_DIR .. "/main.lua"),
 }
--- The descent sheet is the PLAYER's file -- this repo deliberately does not
--- ship it (see assets/README.md) -- so the mod's own directory has to be
--- given one for the sprite half of the suite to exercise anything at all.
--- It is taken away again in "the descent without the sheet" below, which is
--- the other half and the state a fresh install is actually in.
+-- The descent sheet ships with the mod, but this harness loads the mod
+-- through an in-memory filesystem, so the real file is not visible to it and
+-- the mod's own directory has to be given one for the sprite half of the
+-- suite to exercise anything at all.  It is taken away again in "the descent
+-- without the sheet" below, which is the case where the file has gone missing.
 --
--- The bytes do not matter: nothing here renders, and the mod only asks
--- whether the path exists.  What the file has to look like is the player's
--- business and assets/README.md is where it is written down.
+-- The bytes do not matter here: nothing renders, and the mod only asks whether
+-- the path exists.  The real file is measured separately, from disk, further
+-- down -- this fixture cannot stand in for that.
 local SHEET_KEY = "mods/celebi_event/assets/celebi.png"
 files[SHEET_KEY] = "PLAYER-SUPPLIED-SHEET-FIXTURE"
 -- The ROM-free fixture is a three-species stand-in, so the shrine event has no
@@ -668,20 +668,28 @@ do
   -- 1 / 2 and everything darker as colour 3.  A true-colour sheet has none of
   -- those levels, so nothing in it means "palette colour 1".
 
-  -- The sheet is the player's file now, so there is no shipped one to measure.
-  -- What the repo has to prove instead is that it does NOT carry one -- the
-  -- shape the player must supply is written down in assets/README.md, and
-  -- tools/author_celebi_sheet.py is the recipe that produces it -- and that a
-  -- copy kept here for local testing cannot ride along in a release.
-  T.eq(fileExists(MOD_DIR .. "/assets/celebi.png"), false,
-    "the repo ships no sheet -- it is the player's to supply")
+  -- The sheet ships, so the real file has to be the shape the bake and the
+  -- descent both need: four 16x16 frames stacked vertically, the cart's 16x64
+  -- graphic (`ld a, [wCelebiSpriteTile]` indexes it that way).  Measured off
+  -- the file on disk, not off the in-memory fixture the descent blocks use --
+  -- that fixture is a stand-in string, and would not notice the real file
+  -- going missing from the package or arriving mis-sized.
+  local sheet = readFile(MOD_DIR .. "/assets/celebi.png")
+  local function be32(s, at)
+    local a, b, c, d = s:byte(at, at + 3)
+    return ((a * 256 + b) * 256 + c) * 256 + d
+  end
+  T.eq(sheet:byte(1), 137, "the shipped sheet starts with the PNG magic byte")
+  T.eq(sheet:sub(2, 4), "PNG", "and carries the PNG signature")
+  T.eq(be32(sheet, 17), 16, "16 pixels wide")
+  T.eq(be32(sheet, 21), 64, "and 64 tall -- four 16x16 frames")
   T.check(fileExists(MOD_DIR .. "/assets/README.md"),
-    "assets/README.md says what to drop in and where")
+    "assets/README.md records where the sheet comes from")
   T.check(fileExists(MOD_DIR .. "/tools/author_celebi_sheet.py"),
-    "and tools/author_celebi_sheet.py is the recipe that makes it")
+    "and tools/author_celebi_sheet.py re-derives it from a cart's own copy")
   local ignore = readFile(MOD_DIR .. "/.modkitignore")
-  T.check(ignore and ignore:find("\nassets/celebi.png\n", 1, true) ~= nil,
-    "and .modkitignore names it, so a local copy cannot ship")
+  T.check(ignore and ignore:find("\nassets/celebi.png\n", 1, true) == nil,
+    "and .modkitignore does NOT exclude it, so it really ships")
   T.eq(spriteDef and spriteDef.spriteType, "STILL_SPRITE",
     "as a still sprite whose frame the descent drives")
   T.eq(celebi.def.owner, "celebi_event", "owned by this mod")
@@ -807,13 +815,13 @@ end
 
 -- ---- the descent without the sheet -----------------------------------------
 --
--- The sheet is the player's file, so "no sheet" is the state a fresh install
--- is in, and it has to be a WORKING state.  It used to be fatal:
--- beginShrineDescent treated a sprite it could not build as a reason to
--- abandon the whole cutscene, so a missing picture cost the player the entire
--- shrine event -- the "!", the step back, the 160-iteration descent and the
--- Lv30 battle -- over art.  It now says so once and descends anyway, and this
--- is that path.
+-- The sheet ships, but it is the one file that can go missing without the
+-- rest of the mod being broken -- a bad install, or a player who deleted it --
+-- and that has to be a WORKING state.  It used to be fatal: beginShrineDescent
+-- treated a sprite it could not build as a reason to abandon the whole
+-- cutscene, so a missing picture cost the player the entire shrine event --
+-- the "!", the step back, the 160-iteration descent and the Lv30 battle --
+-- over art.  It now says so once and descends anyway, and this is that path.
 --
 -- The same press as above, on a fresh world, with the sheet taken back out.
 do
@@ -886,7 +894,8 @@ do
   -- hand-over block's shrine run near the end of this file does one -- which
   -- still passes, because it only asserts the battle and the teardown.  That is
   -- the problem: the sprite path would stop being exercised anywhere after this
-  -- point and nothing would say so.
+  -- point and nothing would say so.  It matters more now, not less: the
+  -- shipped sheet is the normal case, and this block is the exception.
   files[SHEET_KEY] = "PLAYER-SUPPLIED-SHEET-FIXTURE"
 end
 

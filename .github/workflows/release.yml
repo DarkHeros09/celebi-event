@@ -12,7 +12,7 @@ name: Release
 # To cut a release:
 #
 #   1. bump "version" in manifest.json
-#   2. git tag v1.4.6 && git push origin v1.4.6
+#   2. git tag v1.4.7 && git push origin v1.4.7
 #
 # The tag and the manifest have to agree; the build fails if they do not.
 
@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release, e.g. v1.4.6 (must already exist)'
+        description: 'Tag to release, e.g. v1.4.7 (must already exist)'
         required: true
         type: string
 

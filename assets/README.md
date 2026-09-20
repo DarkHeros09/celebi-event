@@ -1,24 +1,7 @@
-# assets/ — the one picture this mod does not ship
+# assets/ — Celebi's descent sprite
 
-This directory is where **Celebi's descent sprite** goes. It is empty on purpose:
-the file is yours to supply.
-
-## Why it is not here
-
-The sprite is a re-cut of the cart's own overworld graphic — `gfx/overworld/celebi.2bpp`,
-the sheet `SpecialCelebiGFX` loads in `engine/events/celebi.asm`. It is Nintendo's
-art, so this mod does not redistribute it. Everything else the shrine event needs
-is code, and the code ships.
-
-Gold cannot supply it for you either. The engine's importer extracts a
-`battle/front/celebi.png` and a `battle/back/celebi_back.png`, but **no overworld
-sheet** — Gold has no Celebi overworld sprite of its own, the constant is
-Crystal's — so there is nothing in your own imported cache to derive it from.
-
-## What to drop in
-
-Save the sheet as **`assets/celebi.png`** inside the installed mod folder
-(`mods/celebi_event/assets/celebi.png`). It has to be:
+This directory holds one file, **`celebi.png`**: the sprite that descends to the
+player at the Ilex Forest shrine.
 
 | property | value |
 | --- | --- |
@@ -26,19 +9,39 @@ Save the sheet as **`assets/celebi.png`** inside the installed mod folder
 | frames | four, one per step of the descent, top to bottom |
 | colours | **four shades only**: white, two greys, black |
 
-The four shades are not a stylistic choice. `SpriteRenderer:resolveImage` runs the
-sheet through `getObpImage`, which keys shade 0 (white) to transparent and maps
-shades 1–3 onto the sprite's own OBJ palette — `PAL_OW_GREEN`, the palette the
-cart draws the shrine sprite with. Its colours 1–3 are `#FF9C52` (orange),
-`#3ABD19` (green) and black at every time of day, so the Celebi that descends is
-an orange-bodied, green-accented hover, and it follows the time of day and the
-COLOR option like every other sprite on the map.
+## Where it comes from
 
-A true-colour PNG will **not** work: it has no shade levels for the bake to read,
-so nothing in it means "palette colour 1". That was the 1.4.0/1.4.1 bug — see
-README, "Celebi's colours".
+It is a re-cut of the cart's own overworld graphic — `gfx/overworld/celebi.2bpp`,
+the sheet `SpecialCelebiGFX` loads in `engine/events/celebi.asm`. The cart copies
+it into `vTiles0` for that one animation and never as an ordinary sprite, so it
+is **not** a row of the `OverworldSprites` table, and the engine's importer
+therefore never writes it: a Gold import yields `battle/front/celebi.png` and
+`battle/back/celebi_back.png` but **no overworld sheet**.
 
-## If you would rather not
+That is the whole reason this file is carried in the package. Nothing on the
+player's machine can be used to derive it, so the choice was never "ship it or
+derive it" — it was "ship it, or ship a descent with no Celebi in it".
+
+`tools/author_celebi_sheet.py` is the recipe: point it at your own cart's 16×64
+sheet and it writes this file. It reproduces the shipped sheet byte for byte, so
+building it yourself and downloading it come out the same.
+
+## The four shades are load-bearing
+
+`SpriteRenderer:resolveImage` runs the sheet through `getObpImage`, which keys
+shade 0 (white) to transparent and maps shades 1–3 onto the sprite's own OBJ
+palette — `PAL_OW_GREEN`, the palette the cart draws the shrine sprite with. Its
+colours 1–3 are `#FF9C52` (orange), `#3ABD19` (green) and black at every time of
+day, so the Celebi that descends is an orange-bodied, green-accented hover, and
+it follows the time of day and the COLOR option like every other sprite on the
+map.
+
+That is also why **one sheet serves all three carts**: nothing in the file names
+a colour. A true-colour PNG will not work — it has no shade levels for the bake
+to read, so nothing in it means "palette colour 1". That was the 1.4.0/1.4.1
+bug; see README, "Celebi's colours".
+
+## If you delete it
 
 Nothing breaks. The shrine event still runs end to end — the "!", the step back,
 the 160-iteration descent, the tear-down and the Lv30 battle all play — the

@@ -8,12 +8,6 @@
 # so this line is a guard against committing it, not against shipping it.)
 .probe/
 
-# Player-supplied art.  assets/ ships the how-to, not the picture: Celebi's
-# descent sheet is a re-cut of the cart's own overworld graphic, so it is
-# Nintendo's and is deliberately not in this repo -- which means a copy dropped
-# in for local testing must not be committed either.  See assets/README.md.
-assets/celebi.png
-
 # Build output.  The release zip is built by CI from the tagged tree and
 # attached to the GitHub Release; it is never committed.  See
 # .github/workflows/release.yml, and README's "Releasing it".

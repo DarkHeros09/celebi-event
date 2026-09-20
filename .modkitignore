@@ -18,23 +18,19 @@ tests/celebi_event_test.lua
 tests/launcher_update_test.lua
 
 # tools/ is the same kind of thing: build_release.py is what CI runs to make
-# the release zip, and author_celebi_sheet.py is the recipe for the one picture
-# the mod does not ship (see assets/README.md).  Both are authoring-side; an
+# the release zip, and author_celebi_sheet.py re-derives the shipped sheet from
+# a cart's own copy of it (see assets/README.md).  Both are authoring-side; an
 # installed mod has no use for either.
+#
+# assets/ is NOT listed here, and that is the point: assets/celebi.png SHIPS.
+# It is a re-cut of the cart's own overworld graphic and so Nintendo's, but
+# nothing can derive it at runtime -- Gold has no Celebi overworld sprite, so
+# the engine's extractor never writes one -- which makes it a choice between
+# carrying the file and shipping a descent with no sprite in it.  Versions
+# 1.4.5 and 1.4.6 took the second road; 1.4.7 carries it.  assets/README.md
+# records the whole trade.
 tools/build_release.py
 tools/author_celebi_sheet.py
-
-# Player-supplied art.
-#
-# assets/ is the documented route for giving the descent its sprite (see
-# assets/README.md).  The sheet is a re-cut of the cart's own overworld
-# graphic, so it is Nintendo's and this mod does not ship it -- which makes a
-# copy kept in the tree for local testing something that must not ride along
-# in a release.  Hence the line below.
-#
-# assets/README.md is deliberately NOT listed: it is the how-to and ships, the
-# same as it always has.
-assets/celebi.png
 
 # A guard, not a description of the tree.
 #
@@ -53,5 +49,5 @@ assets/celebi.png
 # not after the repo or the mod folder, which use a hyphen.  The launcher
 # matches the release asset against the id exactly, so the id spelling is the
 # one that matters.
-celebi_event-1.4.6.modpkg
-celebi_event-1.4.6.zip
+celebi_event-1.4.7.modpkg
+celebi_event-1.4.7.zip

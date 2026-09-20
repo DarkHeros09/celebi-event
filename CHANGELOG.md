@@ -4,6 +4,41 @@ All notable changes to this mod are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.7] - 2026-09-20
+
+The descent sprite is shipped again, and that is a reversal of 1.4.5.
+
+### Changed
+
+**`assets/celebi.png` is back in the package.** 1.4.5 left it to the player on
+the grounds that it is a re-cut of the cart's own overworld graphic and so
+Nintendo's art. That was the wrong trade, and the reasoning behind it did not
+survive contact with the code: the engine's extractor cannot produce the sheet,
+because Celebi's graphic is not a row of `OverworldSprites` -- `SpecialCelebiGFX`
+copies it into `vTiles0` for the one animation -- so Gold has nothing to cut and
+no import ever contains one. The choice was never "ship it or derive it". It was
+"ship it or ship a descent with no Celebi in it", and 1.4.5 and 1.4.6 chose the
+second without saying so plainly enough.
+
+The sheet is 16x64, four 16x16 frames, in the four shades the bake reads. One
+file, and it draws correctly on Gold, Silver and Crystal alike, because the
+colours come from `PAL_OW_GREEN` rather than from the file. `assets/README.md`
+records where it comes from and what it has to be, and
+`tools/author_celebi_sheet.py` -- vendored, and verified to reproduce it byte for
+byte from a cart's own copy -- is the recipe for anyone who would rather build it
+than download it.
+
+The no-sheet path stays, and is tested: delete the file and the event still runs
+end to end, minus the sprite, and the mod logs it once.
+
+The version moves to 1.4.7 because 1.4.6 is published without the sheet.
+
+### Fixed
+
+**Celebi not appearing during the descent.** The symptom 1.4.5 introduced, and
+the reason for the reversal above. The sprite is built from `assets/celebi.png`,
+and that file was not in the package.
+
 ## [1.4.6] - 2026-09-20
 
 The mod is called **Celebi Event**.
