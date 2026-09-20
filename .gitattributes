@@ -1,0 +1,15 @@
+# Store every file exactly as it is on disk.
+#
+# This tree is deliberately mixed: CHANGELOG.md, README.md, manifest.json and
+# tests/celebi_event_test.lua are CRLF, main.lua and mod.card are LF, and the
+# release archive is built from the tree byte for byte.  With
+# core.autocrlf=true (the Git for Windows default) and no attributes file, Git
+# would store LF and hand back CRLF, so a fresh clone would not match the tree
+# the .zip was built from.  -text turns that conversion off without giving up
+# text diffs.
+* -text
+
+# Archives and art: never text, never diffed.
+*.zip binary
+*.modpkg binary
+*.png binary

@@ -1,0 +1,57 @@
+# Development-only files, kept out of the packed mod.
+#
+# Entries are exact relative paths -- modkit matches the whole path, not a
+# directory prefix -- so a new test file needs its own line here.
+#
+# `modkit pack` zips everything under the mod directory, so anything listed
+# here is also left out of the release, which is what we want: the suites need
+# a gen1recomp checkout to run against and are no part of the installed mod.
+# It is also what keeps `gen2check`'s module-reach notes about them out of the
+# gate output, since a test that never runs in the game has no Gen 2
+# reachability to report.  See README, "Verifying it".
+#
+# A dot-directory is skipped wholesale by both packers, which is why .probe/
+# is not listed here -- but see .gitignore, which does list it, because
+# publishing the reverse-engineering evidence is a different question from
+# packaging it.
+tests/celebi_event_test.lua
+tests/launcher_update_test.lua
+
+# tools/ is the same kind of thing: build_release.py is what CI runs to make
+# the release zip, and author_celebi_sheet.py is the recipe for the one picture
+# the mod does not ship (see assets/README.md).  Both are authoring-side; an
+# installed mod has no use for either.
+tools/build_release.py
+tools/author_celebi_sheet.py
+
+# Player-supplied art.
+#
+# assets/ is the documented route for giving the descent its sprite (see
+# assets/README.md).  The sheet is a re-cut of the cart's own overworld
+# graphic, so it is Nintendo's and this mod does not ship it -- which makes a
+# copy kept in the tree for local testing something that must not ride along
+# in a release.  Hence the line below.
+#
+# assets/README.md is deliberately NOT listed: it is the how-to and ships, the
+# same as it always has.
+assets/celebi.png
+
+# A guard, not a description of the tree.
+#
+# The tree itself carries no build output: the release zip is built by CI from
+# the tagged tree and attached to the GitHub Release, never committed (see
+# .github/workflows/release.yml, and .gitignore).  These two lines are here for
+# the case where somebody builds a release by hand *into the repo root* -- both
+# `modkit pack` and tools/build_release.py walk the whole tree, so a stray
+# artifact gets folded into the next build.
+#
+# Exact paths, like every other entry here, so a version bump means renaming
+# them.  `tests/launcher_update_test.lua` fails if they stop matching the
+# manifest's id and version, which is the reminder.
+#
+# Note the underscore: these are named after the manifest id, `celebi_event`,
+# not after the repo or the mod folder, which use a hyphen.  The launcher
+# matches the release asset against the id exactly, so the id spelling is the
+# one that matters.
+celebi_event-1.4.5.modpkg
+celebi_event-1.4.5.zip

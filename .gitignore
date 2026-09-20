@@ -1,0 +1,28 @@
+# Development-only working files.
+#
+# .probe/ is where the reverse-engineering evidence lives: extracted ROM art,
+# video frames pulled from the original event's footage, and diffs against
+# pret/pokegold.  It is how the port was worked out and it is worth keeping in
+# the source tree, but it is Nintendo's material and it is no part of the mod,
+# so it is never published.  (Both packers skip dotted directories wholesale,
+# so this line is a guard against committing it, not against shipping it.)
+.probe/
+
+# Player-supplied art.  assets/ ships the how-to, not the picture: Celebi's
+# descent sheet is a re-cut of the cart's own overworld graphic, so it is
+# Nintendo's and is deliberately not in this repo -- which means a copy dropped
+# in for local testing must not be committed either.  See assets/README.md.
+assets/celebi.png
+
+# Build output.  The release zip is built by CI from the tagged tree and
+# attached to the GitHub Release; it is never committed.  See
+# .github/workflows/release.yml, and README's "Releasing it".
+*.modpkg
+celebi_event-*.zip
+celebi-event-*.zip
+dist/
+
+# OS junk
+Thumbs.db
+desktop.ini
+.DS_Store

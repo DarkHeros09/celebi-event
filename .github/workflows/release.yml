@@ -1,0 +1,109 @@
+name: Release
+
+# Builds the mod's .zip from the tagged tree and attaches it to a GitHub
+# Release.  Nothing is committed -- the zip is a build product.
+#
+# Why a workflow rather than a committed file: the launcher's auto-update
+# (src/mods/ModUpdate.lua in gen1recomp) reads GitHub *Releases*, not tags, and
+# downloads the asset named exactly "<mod-id>-<version>.zip".  The tag and the
+# asset name are the contract, so both are derived here from the version in
+# manifest.json instead of being typed out twice.
+#
+# To cut a release:
+#
+#   1. bump "version" in manifest.json
+#   2. git tag v1.4.6 && git push origin v1.4.6
+#
+# The tag and the manifest have to agree; the build fails if they do not.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release, e.g. v1.4.5 (must already exist)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # Checked out into a directory named after the MOD ID, not the repo.
+      #
+      # tools/build_release.py takes the zip's wrapper folder name from the
+      # directory it is pointed at, so this is what puts every entry under
+      # "celebi_event/".  The name is cosmetic -- the installer writes to
+      # "mods/<manifest.id>" whatever the wrapper is called, and clears any
+      # same-id tree first -- but what is NOT cosmetic is that the zip must
+      # hold exactly ONE top-level folder, because LauncherMods.locateRoot
+      # refuses a zip with two.  One checkout directory gives exactly that.
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          path: celebi_event
+          fetch-depth: 0
+
+      - name: Resolve the tag and check it against the manifest
+        id: ver
+        working-directory: celebi_event
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.tag }}" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${TAG#v}"
+          MOD_ID="$(python3 -c 'import json;print(json.load(open("manifest.json"))["id"])')"
+          MANIFEST_VERSION="$(python3 -c 'import json;print(json.load(open("manifest.json"))["version"])')"
+          if [ "$VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "::error::tag $TAG says version $VERSION but manifest.json says $MANIFEST_VERSION"
+            exit 1
+          fi
+          # The id carries an underscore ("celebi_event") while the repo and the
+          # mod folder carry a hyphen.  The launcher matches this name EXACTLY
+          # against "<mod-id>-<version>.zip" and falls back to a prefix match on
+          # the id, so a hyphenated asset name matches neither rule and is only
+          # rescued by the last-resort "any .zip".  Deriving it from the
+          # manifest id is what keeps it correct.
+          ZIP="${MOD_ID}-${VERSION}.zip"
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "zip=$ZIP"
+          } >> "$GITHUB_OUTPUT"
+          echo "Releasing $MOD_ID $VERSION as $ZIP"
+
+      - name: Build the zip
+        working-directory: celebi_event
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/${{ steps.ver.outputs.zip }}"
+          python3 tools/build_release.py . -o "$OUT"
+          # The asset name is the contract: the launcher looks for exactly
+          # "<mod-id>-<version>.zip" before falling back to any .zip.
+          test -s "$OUT"
+
+      - name: Publish the release
+        working-directory: celebi_event
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.ver.outputs.tag }}"
+          OUT="$RUNNER_TEMP/${{ steps.ver.outputs.zip }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$OUT" --clobber
+          else
+            gh release create "$TAG" "$OUT" \
+              --title "$TAG" \
+              --generate-notes
+          fi
+          echo "Assets now on $TAG:"
+          gh release view "$TAG" --json assets --jq '.assets[].name'

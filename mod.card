@@ -1,0 +1,48 @@
+return {
+  summary = "Recreates Crystal's GS Ball quest on Gold, Silver and Crystal: Kurt, the Ilex shrine, and Celebi.",
+  author = "Almdar",
+  tags = { "quest", "gen2", "celebi", "crystal" },
+  differences = {
+    added = {
+      "The GS BALL as a key item (index 251).",
+      "Crystal's GOLDENROD POKeMON CENTER hand-over: step out through the "
+        .. "door and the receptionist brings the GS BALL to you.",
+      "Kurt's study of the ball, with the day rollover before he hands it back.",
+      "The ILEX FOREST shrine event at (8,22) and a Lv30 CELEBI battle.",
+    },
+    changed = {
+      "The A press on ILEX_FOREST (8,22) and on KURT while the quest is running.",
+      "KURT's AZALEA TOWN hand-back and his ILEX FOREST closing line open with "
+        .. "\"KURT: \", the token the ROM's own Kurt text uses, so the "
+        .. "dialogue-portraits mod can name him in the two conversations no A "
+        .. "press starts.",
+      "The bag is the authority on the GS BALL, not this mod's own stage: "
+        .. "KURT answers to a ball in the bag (the cart's `checkitem GS_BALL`), "
+        .. "and the receptionist scene declines when one is already there.  Both "
+        .. "exist because Crystal defines the item natively, so the cart's own "
+        .. "event can hand one over without this mod knowing.",
+      "The GOLDENROD POKeMON CENTER scene opens without the cart's "
+        .. "SFX_EXIT_BUILDING.  That cue belongs to the hero walking out of the "
+        .. "building, and here the scene stands the exit warp down so the "
+        .. "receptionist can reach him -- he stops on the doorway tile at the "
+        .. "last moment before she calls, so nobody has left.  Every other cue "
+        .. "in the scene is the cart's, hers included.",
+    },
+    known = {
+      "Crystal's AZALEA TOWN outdoor scene plays inside KURT'S HOUSE, because "
+        .. "Gold has no KURT_OUTSIDE object and a Gen 2 mod cannot add a coord "
+        .. "event.",
+      "Crystal's GS BALL coord events sit on the two doorway tiles -- which are "
+        .. "directional warps, so the cart runs the coord event on the step onto "
+        .. "them.  A Gen 2 mod cannot add a coord event, so the mod watches "
+        .. "world.stepped for the same tiles and stands the exit warp down for "
+        .. "the frame.",
+      "Runs on all three Gen 2 carts.  Crystal already carries the GS BALL in its own item list, so there the mod does not register a second one -- the cart's own record is used -- and everything else runs, both switches included.  The question asked is the capability, not the cart: does this ROM already carry the GS BALL?",
+    },
+  },
+  credits = {
+    { who = "pret/pokecrystal", for_ = "the event's scripts, text and coordinates" },
+    { who = "pret/pokegold", for_ = "the map events this port reads" },
+  },
+  compat = { engine = ">=0.0.0-0 <2.0.0", modApi = 2 },
+}
