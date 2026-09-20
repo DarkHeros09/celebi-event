@@ -4,6 +4,26 @@ All notable changes to this mod are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2026-09-20
+
+The mod is called **Celebi Event**.
+
+### Changed
+
+**Renamed, from "The GS Ball" to "Celebi Event".** The name in **MODS**, and in
+every launcher notice about the mod, is the manifest's `name` field
+(`RomImporter.lua` reads `manifest.name or manifest.id`); it read "The GS Ball",
+which names the item the quest is about rather than the quest.
+
+The mod's **id is deliberately unchanged** -- `celebi_event`. The launcher
+matches the release asset against the id, and the installer writes to
+`mods/<id>`, so a new id would orphan every existing install and break the
+update path this release exists to carry.
+
+Nothing else changed: no script, no text, no asset. The version moves to 1.4.6
+because 1.4.5 is already published with the old name and a release number is
+not reusable.
+
 ## [1.4.5] - 2026-09-20
 
 Two rules about the GS BALL, both of them about the bag being the authority

@@ -302,7 +302,7 @@ end
 -- folder and every artifact built by hand so far say "celebi-event" -- with a
 -- hyphen.  That is not cosmetic.  pickZipAsset compares the asset name to
 -- "<mod-id>-<version>.zip" EXACTLY, and its only other rule is a lowercase
--- PREFIX match on the id; "celebi-event-1.4.5.zip" satisfies neither, so it is
+-- PREFIX match on the id; "celebi-event-1.4.6.zip" satisfies neither, so it is
 -- rescued only by the last-resort "any .zip" branch, which returns whichever
 -- .zip happens to come first in the release's asset array.
 --

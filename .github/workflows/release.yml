@@ -23,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release, e.g. v1.4.5 (must already exist)'
+        description: 'Tag to release, e.g. v1.4.6 (must already exist)'
         required: true
         type: string
 

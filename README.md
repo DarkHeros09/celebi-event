@@ -1,4 +1,4 @@
-# The GS Ball — Crystal's Celebi event, for Gold and Silver
+# Celebi Event — Crystal's GS Ball quest, for Gold, Silver and Crystal
 
 Crystal's Celebi quest does not exist in Gold. This mod puts it there: the  
 **GS BALL**, **Kurt's** study of it, and **Celebi** at the Ilex Forest shrine.
@@ -319,12 +319,12 @@ of Fame** — the Virtual Console release's own gate, read through the engine's
 out of `save.crystal.gsBall` (`src/script/gen2/specials/battle_tower.lua:132`).
 
 If you would rather see the event without beating the Elite Four, turn on  
-**MODS ▸ The GS Ball ▸ Reach the event without the HALL OF FAME**.
+**MODS ▸ Celebi Event ▸ Reach the event without the HALL OF FAME**.
 
 ## Debugging it
 
 The event has two waits that make it awkward to test, and both have a switch
-under **MODS ▸ The GS Ball**. Both default off, so an untouched install is the
+under **MODS ▸ Celebi Event**. Both default off, so an untouched install is the
 cart's behaviour.
 
 | option | what it removes |
@@ -453,13 +453,13 @@ in code. `/.probe/targets_probe.lua` runs the engine's own gate for each game.
 
 ## Releasing it, and the launcher's auto-update
 
-A release is a **tag**, not a committed file. Pushing `v1.4.5` runs
+A release is a **tag**, not a committed file. Pushing `v1.4.6` runs
 `.github/workflows/release.yml`, which builds the zip from the tagged tree and
 attaches it to the GitHub Release:
 
 ```sh
-git tag v1.4.5
-git push origin v1.4.5
+git tag v1.4.6
+git push origin v1.4.6
 ```
 
 The tag and `manifest.json`'s `version` have to agree, and the workflow refuses
@@ -473,7 +473,7 @@ tags, and looks for an asset named **exactly** `<mod-id>-<version>.zip`.
 This mod's id is `celebi_event` -- **with an underscore** -- while the repo and
 the mod folder are `celebi-event`. That is not cosmetic. `pickZipAsset`
 compares the asset name to the id exactly, and its only other rule is a
-lowercase prefix match on the id, so `celebi-event-1.4.5.zip` satisfies
+lowercase prefix match on the id, so `celebi-event-1.4.6.zip` satisfies
 neither and survives only on the last-resort "any .zip" branch, which returns
 whichever `.zip` comes first in the release's asset array. That works while the
 release carries one zip and starts picking the wrong file the moment a second
