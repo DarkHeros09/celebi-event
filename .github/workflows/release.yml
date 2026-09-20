@@ -11,10 +11,12 @@ name: Release
 #
 # To cut a release:
 #
-#   1. bump "version" in manifest.json
-#   2. git tag v1.4.7 && git push origin v1.4.7
+#   1. rewrite RELEASE_NOTES.md for the new version
+#   2. bump "version" in manifest.json
+#   3. git tag v1.4.8 && git push origin v1.4.8
 #
-# The tag and the manifest have to agree; the build fails if they do not.
+# The tag and the manifest have to agree; the build fails if they do not, and
+# it fails again if RELEASE_NOTES.md is missing or does not name the version.
 
 on:
   push:
@@ -90,6 +92,25 @@ jobs:
           # "<mod-id>-<version>.zip" before falling back to any .zip.
           test -s "$OUT"
 
+      - name: Check the release notes
+        working-directory: celebi_event
+        run: |
+          set -euo pipefail
+          # RELEASE_NOTES.md is not decoration: it IS the release body, and the
+          # release body is what the launcher renders in its "What's New?"
+          # modal (src/mods/ModUpdate.lua -> LauncherView.buildTextModal).
+          # Without it the body falls back to GitHub's generated commit list,
+          # which is a different thing entirely -- and nothing says so, because
+          # a release with a bad body still downloads and installs fine.
+          if [ ! -s RELEASE_NOTES.md ]; then
+            echo "::error::RELEASE_NOTES.md is missing or empty"
+            exit 1
+          fi
+          if ! grep -q "${{ steps.ver.outputs.version }}" RELEASE_NOTES.md; then
+            echo "::error::RELEASE_NOTES.md never names ${{ steps.ver.outputs.version }} -- it is stale"
+            exit 1
+          fi
+
       - name: Publish the release
         working-directory: celebi_event
         env:
@@ -103,7 +124,7 @@ jobs:
           else
             gh release create "$TAG" "$OUT" \
               --title "$TAG" \
-              --generate-notes
+              --notes-file RELEASE_NOTES.md
           fi
           echo "Assets now on $TAG:"
           gh release view "$TAG" --json assets --jq '.assets[].name'

@@ -4,6 +4,95 @@ All notable changes to this mod are documented here. The format is
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## What's New?
+
+Newest first, one short list per version, so the recent history can be read
+without reading the entries below it. The same summary in the form the game
+launcher shows it is `RELEASE_NOTES.md` -- that file is the release *body*, and
+the body is the only changelog text the launcher renders (its **What's New?**
+modal reads the release, never this file).
+
+### 1.4.8 -- KURT's exit and the GS BALL hand-back are one scene
+
+- The world stays locked from the moment KURT runs out of his house until the
+  GS BALL is back in your bag. There is no longer a window where control comes
+  back in between.
+- The hand-back starts on the doorstep: leave the house and the mod walks you
+  down onto the cart's own trigger tile, over to KURT, and plays the lines.
+- Walking out and turning away no longer strands the scene on a tile you might
+  never step on.
+
+### 1.4.7 -- the descent has a sprite again
+
+- `assets/celebi.png` is back in the package. 1.4.5 left it to the player, and
+  the engine's extractor cannot produce it, so the real choice was between
+  carrying the file and shipping a descent with no Celebi in it.
+- The no-sheet path stays, and is tested: delete the file and the event still
+  runs end to end, minus the sprite.
+
+### 1.4.6 -- renamed to Celebi Event
+
+- The name in **MODS** is the manifest's `name` field, and it now says what the
+  quest is rather than which item it is about.
+- The **id** is deliberately unchanged, so every existing install still updates.
+
+### 1.4.5 -- the bag is the authority
+
+- KURT answers to a GS BALL in the bag rather than to this mod's own stage, so
+  the ball Crystal's own event gave is recognised too.
+- The receptionist declines to hand over a second one.
+- The exit warp out of the GOLDENROD POKeMON CENTER is stood down for the frame
+  the scene starts, and only for a scene that actually starts.
+
+## History
+
+## [1.4.8] - 2026-09-20
+
+The hand-back outside KURT's house is one unbroken scene, and the world is never
+walkable in the middle of it.
+
+### Fixed
+
+**The player could move between KURT's exit and the hand-back.** The cart lets
+the player walk out of KURT's house on their own, and the hand-back is a
+separate `coord_event 9, 6` that only runs once they step on it -- so from the
+moment KURT runs out until the player happens to find the trigger tile, the
+world is walkable. A player who turned left at the door instead of down wandered
+off mid-quest, and the scene then played from wherever they came back to. The
+mod now takes the world on the doorway: `warp_event 9, 5` is the house door, so
+(9,5) is the tile the map load finds them standing on, and `beginAzaleaScene` is
+called from the `map.entered` handler with the step down onto the trigger, the
+walk over to KURT and the hand-back all scripted from there. `cutscene` -- which
+`World:busy` reports -- is what holds the player, and it is never released in
+between.
+
+The cart's own arm is untouched: the `world.stepped` trigger still runs the
+scene for a save already standing on (9,6), and it is still the step ONTO the
+tile rather than the arrival through the door. Tested both ways, plus a
+frame-by-frame assertion that `World:busy` never answers false between the
+doorway and the first line.
+
+### Changed
+
+**`RELEASE_NOTES.md` is the release body, and CI publishes it.** The workflow
+used `gh release create --generate-notes`, so the launcher's **What's New?**
+modal was rendering GitHub's generated commit list rather than anything written
+for a player. The body is the only changelog text the launcher shows, so the
+notes are now a file, guarded by the workflow (it must exist and must name the
+version), and published with `--notes-file`.
+
+**This changelog opens with a scannable "What's New?" block**, and the README is
+condensed to the essentials -- install, what the quest does, which carts it runs
+on, and how to release it. The reasoning the old README carried lives here,
+where it belongs.
+
+**The 1.2.0 note about the descent's sway is corrected in place.** It said the
+sway had been scaled into the cart's "in window" band; the code says the
+opposite, and `main.lua`'s `DESCENT` comment is explicit that the amplitude is
+a pixel count and is **not** scaled. That reversal was documented only in the
+old README, which this release condenses, so the correction moves to where the
+history lives.
+
 ## [1.4.7] - 2026-09-20
 
 The descent sprite is shipped again, and that is a reversal of 1.4.5.
@@ -677,6 +766,14 @@ Eleven defects reported from play, checked one by one against
   for this sprite (`8 * TILE_WIDTH + 4` .. `11 * TILE_WIDTH + 4`, i.e. the
   centre column ± 12) — the ASM's decaying-cosine shape, at the extent the ASM
   itself calls normal.
+
+  *Corrected: this was later reverted, and the sway is the cart's own
+  arithmetic again. The amplitude is a pixel count that goes straight into
+  `SPRITEANIMSTRUCT_XOFFSET`, so the sweep really is ±128 pixels while it
+  decays and ±56 once it bottoms out — scaling it into a window was this
+  mod's own reading of the band, and it read as a wobble rather than the
+  cart's swoop. `DESCENT.AMPLITUDE_START` in `main.lua` is the single knob if
+  the sweep ever reads as too wide.*
 - **Kurt did not leave the house.** `KurtsHouse.asm`'s `.NotMakingBalls` ends
   with him running out — shocked, five big steps down, `SFX_EXIT_BUILDING`,
   `disappear` — and he takes the ball with him. The mod handed it over inside

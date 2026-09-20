@@ -29,9 +29,12 @@ return {
         .. "in the scene is the cart's, hers included.",
     },
     known = {
-      "Crystal's AZALEA TOWN outdoor scene plays inside KURT'S HOUSE, because "
-        .. "Gold has no KURT_OUTSIDE object and a Gen 2 mod cannot add a coord "
-        .. "event.",
+      "Crystal's AZALEA TOWN hand-back is started from KURT's house doorway "
+        .. "rather than by its coord event: a Gen 2 mod cannot add a coord "
+        .. "event, so the tile at (9,6) is watched through world.stepped, and "
+        .. "the scene is also taken on the house's own landing tile (9,5), so "
+        .. "stepping out of the house starts it.  KURT_OUTSIDE at (6,5) is "
+        .. "spawned, because Gold has no object for him.",
       "Crystal's GS BALL coord events sit on the two doorway tiles -- which are "
         .. "directional warps, so the cart runs the coord event on the step onto "
         .. "them.  A Gen 2 mod cannot add a coord event, so the mod watches "

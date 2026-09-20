@@ -39,7 +39,8 @@ map.
 That is also why **one sheet serves all three carts**: nothing in the file names
 a colour. A true-colour PNG will not work — it has no shade levels for the bake
 to read, so nothing in it means "palette colour 1". That was the 1.4.0/1.4.1
-bug; see README, "Celebi's colours".
+bug; see `CHANGELOG.md`, entries 1.4.2 (the `trueColor` opt-out) and 1.2.0 (the
+`paletteId` that shadowed the palette name).
 
 ## If you delete it
 

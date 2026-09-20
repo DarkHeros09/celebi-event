@@ -260,12 +260,17 @@ local function newWorld(mapId, save, opts)
     map = { id = mapId, def = { objects = {}, bgEvents = {} } },
     player = {
       cellX = 8, cellY = 23, facing = "up", moving = false,
+      -- Every tile the script asks the player for, in order.  The mod's own
+      -- queues walk the player, so "where did the cutscene take them" is a
+      -- question about this list -- the harness does not move anybody.
+      stepLog = {},
       -- NPC:scriptStep, as far as this harness needs it: one tile, the facing
       -- held while `fixedFacing` is set (that IS fix_facing), and `moving`
       -- standing until the tick has walked the frames out.
       scriptStep = function(self, dir)
         if self.moving then return false end
         self.stepDir = dir
+        self.stepLog[#self.stepLog + 1] = dir
         if not self.fixedFacing then self.facing = dir end
         self.moving = true
         -- NPC.stepFrames is the per-object cadence the mod overrides for a
@@ -1138,6 +1143,115 @@ do
   tick(shrine, 16 * 4 + 24)
   drain(shrine)
   tick(shrine, 16 * 4 + 24)
+end
+
+-- ---- the doorway ----------------------------------------------------------
+--
+-- The cart's coord event only fires on the STEP onto (9,6), so a player who
+-- leaves KURT's house and turns left instead of down never reaches it: the
+-- world stays walkable from the moment KURT is gone until they wander back,
+-- and the hand-back then plays from wherever they come in from.  The mod takes
+-- the world on the doorway instead -- `warp_event 9, 5` is the house door, so
+-- (9,5) is the tile map.entered finds them on -- and the step down onto the
+-- trigger, the walk over to KURT and the hand-back are all scripted from
+-- there.
+--
+-- The lock is `cutscene`, which World:busy reports, and World:busy is the
+-- engine's own answer to "may the player move" (src/world/gen2/World.lua:
+-- 11064).  So the assertion is frame by frame rather than inferred from the
+-- steps: a frame that answers false here is a frame the player could have
+-- walked on, which is exactly the bug.
+
+local function doorwayWorld(save)
+  local kurt = makeKurt(200)
+  kurt.def.owner = "celebi_event"
+  kurt.def.sprite = "SPRITE_KURT"
+  kurt.id = AZALEA .. "_obj_200"
+  kurt.cellX, kurt.cellY = 6, 5
+  local world = newWorld(AZALEA, save, { npc = kurt, fx = 9, fy = 6 })
+  world.npcs[1] = kurt
+  -- the house warp's own landing tile, facing down -- what the door leaves
+  -- behind (World:setMap places the player before it raises map.entered)
+  world.player.cellX, world.player.cellY = 9, 5
+  world.player.facing = "down"
+  -- A press arms the mod's `liveWorld` -- the harness has no `mod.world` for
+  -- the event handlers to resolve.  On this map the press answers with
+  -- AzaleaTownKurtScript's one line, which is not part of this block, so the
+  -- log is cleared to leave the doorway's own boxes countable.
+  press(world)
+  assert(#world.texts == 1, "talking to KURT outside is one line")
+  world.texts = {}
+  return world, kurt
+end
+
+do
+  local save = newSave()
+  save.modData.celebi_event = { stage = "left" }
+  local world, kurt = doorwayWorld(save)
+  T.eq(#world.texts, 0, "the doorway starts with no box up")
+
+  Runtime.emit("map.entered", { mapId = AZALEA })
+  T.check(World2.busy(world), "the doorway takes the world on the same frame")
+  T.eq(#world.player.stepLog, 0, "before the walk has started")
+
+  -- Sampled every frame until the first box is up: the world must never be
+  -- walkable in between, and the walk must really have run.
+  local free, frames = 0, 0
+  while #world.texts == 0 and frames < 400 do
+    frames = frames + 1
+    if not World2.busy(world) then free = free + 1 end
+    tick(world, 1)
+  end
+  T.eq(free, 0,
+    "the world is never walkable between the doorway and the first line")
+  T.check(frames > 16 * 3, "and the walk really ran (" .. frames .. " frames)")
+  T.eq(table.concat(world.player.stepLog, ","), "down,left,left,up",
+    "the player is walked onto the trigger and over to KURT")
+
+  drain(world)
+  T.eq(save.inventory.GS_BALL, 1, "and KURT hands the GS BALL back")
+  T.eq(stageOf(save), "restless", "turning the forest restless")
+  T.eq(world.player.facing, "left", "with the player left facing him")
+  T.eq(kurt.facing, "left", "and KURT turning back to face left afterwards")
+  T.eq(#world.texts, 4, "after the three ILEX FOREST lines and the receipt")
+  T.check(not World2.busy(world), "and the queue releases the world when spent")
+
+  -- The doorway declines everywhere else.  Every other way into the map
+  -- leaves the player on another tile, and a stage that is not "left" means
+  -- there is no ball to hand back -- so walking into AZALEA from the forest,
+  -- or coming back to a finished save, starts nothing.
+  local elsewhere = newSave()
+  elsewhere.modData.celebi_event = { stage = "left" }
+  local other = doorwayWorld(elsewhere)
+  other.player.cellX, other.player.cellY = 9, 6
+  Runtime.emit("map.entered", { mapId = AZALEA })
+  T.check(not World2.busy(other), "arriving on another tile starts nothing")
+  T.eq(#other.player.stepLog, 0, "and walks nobody")
+
+  local finished = newSave()
+  finished.modData.celebi_event = { stage = "restless" }
+  local done = doorwayWorld(finished)
+  Runtime.emit("map.entered", { mapId = AZALEA })
+  T.check(not World2.busy(done),
+    "and a doorway with the ball already back starts nothing")
+  T.eq(#done.player.stepLog, 0, "and walks nobody either")
+
+  -- ...and the coord tile still answers on its own, for a save that is already
+  -- standing on it.  That is the arm the cart writes, and the doorway must not
+  -- have replaced it: the movement there is written from (9,6), so no step
+  -- down is taken.
+  local parked = newSave()
+  parked.modData.celebi_event = { stage = "left" }
+  local tile = doorwayWorld(parked)
+  tile.player.cellX, tile.player.cellY = 9, 6
+  Runtime.emit("world.stepped", { mapId = AZALEA, x = 9, y = 6 })
+  tick(tile, 1)
+  T.check(World2.busy(tile), "the coord tile still takes the world")
+  tick(tile, 16 * 3 + 8)
+  T.eq(table.concat(tile.player.stepLog, ","), "left,left,up",
+    "from (9,6), with no step down")
+  drain(tile)
+  T.eq(parked.inventory.GS_BALL, 1, "and the ball comes back that way too")
 end
 
 -- ---- the Goldenrod hand-over ----------------------------------------------

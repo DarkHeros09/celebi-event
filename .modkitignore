@@ -49,5 +49,12 @@ tools/author_celebi_sheet.py
 # not after the repo or the mod folder, which use a hyphen.  The launcher
 # matches the release asset against the id exactly, so the id spelling is the
 # one that matters.
-celebi_event-1.4.7.modpkg
-celebi_event-1.4.7.zip
+celebi_event-1.4.8.modpkg
+celebi_event-1.4.8.zip
+
+# RELEASE_NOTES.md is the release BODY, not a file the installed mod reads:
+# .github/workflows/release.yml hands it to `gh release create --notes-file`,
+# and the launcher renders it in the "What's New?" modal.  Authoring-side, so
+# it stays out of the package like the tests and tools above.  It is committed
+# (see .gitignore) because the workflow needs it at the tagged commit.
+RELEASE_NOTES.md

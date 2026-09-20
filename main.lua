@@ -697,6 +697,11 @@ local KURT_EXIT_STEPS = 5
 local AZALEA_MAP = "AZALEA_TOWN"
 local KURT_OUTSIDE_X, KURT_OUTSIDE_Y = 6, 5
 local AZALEA_TRIGGER_X, AZALEA_TRIGGER_Y = 9, 6
+-- `warp_event 9, 5, KURTS_HOUSE, 1` -- the tile the player lands on coming out
+-- of the house, one above the trigger.  The mod starts the hand-back from here
+-- rather than waiting for the player to find (9,6) on their own; see
+-- beginAzaleaScene.
+local AZALEA_HOME_X, AZALEA_HOME_Y = 9, 5
 -- Kurt stands at (6,5) and the house warp is (9,5).
 local KURT_HOME_STEPS = 3
 
@@ -1000,23 +1005,57 @@ local function azaleaHandBack(mod, world, kurt)
   mod.save:set(STAGE, "restless")
 end
 
+-- The last three tiles of `AzaleaTownPlayerLeavesKurtsHouseMovement` -- LEFT,
+-- LEFT, UP -- and the `turn_head LEFT` that ends it.  Two callers walk the
+-- player to KURT: the coord tile's own scene, when the player got there
+-- themselves, and the house exit's queue, which walks them the whole way.  The
+-- movement, the turn and the hand-over are written once for both.
+local function azaleaLeaveSteps(steps, world)
+  steps[#steps + 1] = { who = world.player, dir = "left" }
+  steps[#steps + 1] = { who = world.player, dir = "left" }
+  steps[#steps + 1] = { who = world.player, dir = "up" }
+end
+
+local function azaleaHandBackDone(mod, world, kurt)
+  -- `turn_head LEFT`, the last entry of AzaleaTownPlayerLeavesKurtsHouse-
+  -- Movement.  Without it the player is left facing UP from the step, which
+  -- is the wrong direction to be handed the ball in.
+  if world.player then world.player.facing = "left" end
+  azaleaHandBack(mod, world, kurt)
+end
+
 -- `AzaleaTownPlayerLeavesKurtsHouseMovement` (LEFT, LEFT, UP, turn_head LEFT)
 -- then the three lines.  Only the coord tile runs this -- talking to Kurt
 -- outside is AzaleaTownKurtScript, which says one line and gives nothing.
-local function beginAzaleaScene(mod, world)
+--
+-- Two ways in, and they differ by one tile.  The cart's `coord_event 9, 6`
+-- runs it when the player walks onto the trigger themselves -- `fromDoorway`
+-- false -- and the movement is written from there, so the player is already
+-- standing on it.  `fromDoorway` is the house warp's own landing tile, (9,5),
+-- one above the trigger, so the queue has to take the cart's trigger step
+-- first.
+--
+-- That second way in is the mod's, and it is the point of the flag.  The cart
+-- leaves the player free from the moment KURT is gone until they happen to
+-- step on the tile, so a player who turns left at the door instead of down
+-- wanders off mid-quest and meets the scene from wherever they come back to.
+-- Taking the world on the doorway closes that stretch: the player lands
+-- outside and the step down, the walk over and the hand-back are all scripted,
+-- with no frame in between where World:busy hands control back.
+local function beginAzaleaScene(mod, world, fromDoorway)
   if cutscene then return false end
+  if fromDoorway and mod.save:get(STAGE) ~= "left" then return false end
+  local p = world and world.player
+  if fromDoorway and not (p and p.cellX == AZALEA_HOME_X
+    and p.cellY == AZALEA_HOME_Y) then
+    return false
+  end
   local kurt = kurtOutside(world)
-  local steps = {
-    { who = world.player, dir = "left" },
-    { who = world.player, dir = "left" },
-    { who = world.player, dir = "up" },
-  }
+  local steps = {}
+  if fromDoorway then steps[#steps + 1] = { who = p, dir = "down" } end
+  azaleaLeaveSteps(steps, world)
   return beginSteps(mod, world, steps, function()
-    -- `turn_head LEFT`, the last entry of AzaleaTownPlayerLeavesKurtsHouse-
-    -- Movement.  Without it the player is left facing UP from the step, which
-    -- is the wrong direction to be handed the ball in.
-    if world.player then world.player.facing = "left" end
-    azaleaHandBack(mod, world, kurt)
+    azaleaHandBackDone(mod, world, kurt)
   end)
 end
 
@@ -1852,6 +1891,21 @@ return function(mod)
       -- until the scene runs, and a runtime object is not serialized, so this
       -- is where he comes back after a save or a warp.
       ensureKurtOutside(mod, world)
+      -- ...and this is the doorway.  The cart's `coord_event 9, 6` only fires
+      -- on the STEP onto the trigger, so a player who leaves KURT's house and
+      -- turns left instead of down never reaches it -- the world stays
+      -- walkable and the hand-back waits on them.  Taking the world here
+      -- closes that stretch: the player lands on the house warp's own tile and
+      -- beginAzaleaScene walks them down onto the trigger and over to KURT,
+      -- with no frame in between where World:busy lets them move.
+      --
+      -- map.entered is the right moment for it: setMap places the player
+      -- (src/world/gen2/World.lua:9911) before the emit, so the cell test below
+      -- reads the tile the warp actually landed them on, and the emit is ahead
+      -- of the map's own scene script.  beginAzaleaScene declines on every
+      -- other arrival -- another tile, another stage, a scene already running
+      -- -- so walking into AZALEA from the forest is untouched.
+      beginAzaleaScene(mod, world, true)
     end
   end)
 
@@ -1899,9 +1953,14 @@ return function(mod)
     end
     if ev.mapId ~= AZALEA_MAP then return end
     -- AzaleaTown.asm's `coord_event 9, 6, SCENE_AZALEATOWN_KURT_RETURNS_GS_BALL`.
+    -- The doorway takes this path first -- see the map.entered handler above --
+    -- so this arm is what answers a player who reaches the tile some other way:
+    -- a save loaded already standing on it, or a scene that declined earlier.
+    -- It is the step ONTO the tile, so the player is already there and the
+    -- movement is written from (9,6): `fromDoorway` false.
     if ev.x ~= AZALEA_TRIGGER_X or ev.y ~= AZALEA_TRIGGER_Y then return end
     if mod.save:get(STAGE) ~= "left" then return end
-    if world then beginAzaleaScene(mod, world) end
+    if world then beginAzaleaScene(mod, world, false) end
   end)
 
   -- Nothing to place at load time any more: the receptionist is spawned by the
