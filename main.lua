@@ -1446,11 +1446,22 @@ local function positionDescent(cs)
   npc.py = anchor.cellY * 16 + DESCENT.Y_LEAD + cs.y
   npc.facing = cs.facing
   -- The cart swaps FRAMESET_CELEBI_LEFT / CELEBI_RIGHT as the sprite crosses
-  -- the centre column.  The sheet has no side poses, so the equivalent
-  -- is the mirror -- see the SpriteRenderer:draw wrap in the entry chunk, which
-  -- reads this flag.
+  -- the centre column.  Both framesets are the SAME OAM set and only the flip
+  -- differs -- data/sprite_anims/framesets.asm has `.Frameset_CelebiLeft` as
+  -- `oamframe SPRITE_ANIM_OAMSET_CELEBI_1, 8` and `.Frameset_CelebiRight` as
+  -- that same line with `B_OAM_XFLIP` -- so the equivalent here is the mirror.
+  -- See the SpriteRenderer:draw wrap in the entry chunk, which reads this flag.
+  --
+  -- The flag is `facing == "right"`, NOT "left": the cart flips for RIGHT and
+  -- leaves LEFT unflipped, and the shipped sheet is the UNFLIPPED art.
+  -- assets/celebi.png reconstructs to the cart's own 16x64
+  -- `gfx/overworld/celebi.2bpp` byte for byte -- the 256 bytes of 2bpp it
+  -- decodes to sit at $499a2 in the Crystal ROM, and the MIRRORED bytes appear
+  -- nowhere in it -- so mirroring on "left" inverted the sprite for the whole
+  -- descent: it faced away from the player exactly where the cart faces it.
+  -- "the mirror flag is set both ways" cannot see that, being direction-blind.
   if npc.sprite then
-    npc.sprite.celebiEventMirror = (cs.facing == "left")
+    npc.sprite.celebiEventMirror = (cs.facing == "right")
     -- Read by the SpriteRenderer:draw wrap, which passes it as frameOverride.
     -- NPC:draw hard-codes that to bounceFrame(), which is nil for a
     -- STILL_SPRITE, so the sheet would otherwise sit on frame 0 forever.

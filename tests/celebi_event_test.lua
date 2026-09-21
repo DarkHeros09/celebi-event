@@ -715,6 +715,12 @@ do
   -- so the left-facing half only happens early.
   local swayMax, lowest = 0, celebi.py
   local mirrorLeft, mirrorRight = false, false
+  -- The mirror is DIRECTIONAL, and "set both ways" is blind to it being
+  -- inverted.  The cart's CELEBI_LEFT frameset is the UNFLIPPED one
+  -- (data/sprite_anims/framesets.asm: only `.Frameset_CelebiRight` carries
+  -- B_OAM_XFLIP) and the shipped sheet is the unflipped art, so a sprite to the
+  -- LEFT of the player must NOT be mirrored and one to the RIGHT must be.
+  local mirrorWhenLeft, mirrorWhenRight = nil, nil
   local function sample(n)
     for _ = 1, n do
       tick(world, 1)
@@ -723,6 +729,9 @@ do
       -- the cart swaps FRAMESET_CELEBI_LEFT / RIGHT; the port mirrors instead
       if celebi.sprite.celebiEventMirror then mirrorLeft = true
       else mirrorRight = true end
+      local dx = celebi.px - (world.player.cellX * 16 + 8)
+      if dx < -32 then mirrorWhenLeft = celebi.sprite.celebiEventMirror end
+      if dx > 32 then mirrorWhenRight = celebi.sprite.celebiEventMirror end
     end
   end
   sample(40)
@@ -733,6 +742,12 @@ do
   sample(120)
   T.check(mirrorLeft and mirrorRight,
     "the descent sets the mirror flag both ways")
+  -- and the RIGHT way round.  An inverted flag satisfies the line above and
+  -- still draws the sprite facing away from the player for the whole descent.
+  T.eq(mirrorWhenLeft, false,
+    "left of the player is NOT mirrored -- CELEBI_LEFT is the unflipped frameset")
+  T.eq(mirrorWhenRight, true,
+    "and right of the player IS mirrored, as CELEBI_RIGHT is")
   -- The flag alone proves nothing -- assert the wrapper actually flips the
   -- frame.  This drives the mod's own SpriteRenderer:draw.
   spriteDraws = {}
