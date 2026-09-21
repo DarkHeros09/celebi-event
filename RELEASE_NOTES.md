@@ -1,18 +1,18 @@
 <!-- This file IS the release body. .github/workflows/release.yml publishes it verbatim, and the game launcher renders that body in its "What's New?" modal (src/mods/ModUpdate.lua's cleanBody, drawn by LauncherView's buildTextModal). Rewrite it for each version, and keep the first line short: the launcher also shows it as the one-line preview on the update row (ModUpdate.previewLine, 90 characters). Markdown is stripped rather than rendered, so headings, dashes and plain lines are all that survive -- no tables, no nested lists, and avoid paired underscores or asterisks, which the cleaner removes as emphasis markers. -->
 
-v1.4.9: runs alongside Wilds of Kanto now.
+v1.5.0: Celebi descends facing the way the cart draws it.
 
 ## What's new
 
-- Fixed: with Wilds of Kanto installed, the GOLDENROD POKeMON
-  CENTER receptionist appeared at the stairs and would not
-  move, so her scene never finished and the world stayed
-  locked.
-- Wilds of Kanto takes over the engine's per-frame step while
-  it loads, and that removed this mod's own tick. The tick is
-  now restored automatically, whichever mod loads last.
-- The scene itself is unchanged: the same lines, the same
-  movements and the same tiles.
+- Fixed: Celebi's descent sprite was drawn horizontally
+  mirrored for the whole animation, so it faced away from
+  the player exactly where the cart faces it.
+- The cart's CELEBI_LEFT frameset is the unflipped one, and
+  this mod mirrored on the opposite side. It mirrors on the
+  right one now.
+- Present in every version, 1.4.8 included, so this is a fix
+  rather than a change of mind. The sheet, the timing, the
+  160 iterations and the battle are all untouched.
 
 ## The quest, in full
 

@@ -12,6 +12,21 @@ launcher shows it is `RELEASE_NOTES.md` -- that file is the release *body*, and
 the body is the only changelog text the launcher renders (its **What's New?**
 modal reads the release, never this file).
 
+### 1.5.0 -- Celebi descends facing the way the cart draws it
+
+- The descent sprite was drawn horizontally mirrored for the whole animation:
+  it faced away from the player exactly where the cart faces it. The cart's
+  CELEBI_LEFT frameset is the UNFLIPPED one -- only CELEBI_RIGHT carries
+  B_OAM_XFLIP (data/sprite_anims/framesets.asm) -- and this mod mirrored on the
+  opposite side.
+- Present in every version, 1.4.8 included, so this is a fix rather than a
+  change of mind. The sheet, the timing, the 160 iterations and the battle are
+  all untouched.
+- The suite could not catch it: its only mirror check was "the flag is set both
+  ways", which an inverted flag satisfies. It now pins the direction -- not
+  mirrored left of the player, mirrored right of it -- and that assertion was
+  verified to fail against the old line.
+
 ### 1.4.9 -- runs alongside Wilds of Kanto
 
 - With Wilds of Kanto installed, the GOLDENROD POKeMON CENTER receptionist
