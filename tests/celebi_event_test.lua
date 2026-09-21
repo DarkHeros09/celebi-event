@@ -94,11 +94,19 @@ end
 -- the world still during the descent).  Both are replaced with sentinels
 -- BEFORE the load for the same reason interactBody is: the real ones need a
 -- live map, and a sentinel makes "did the mod call through?" an identity check.
+-- The real World:step evaluates self:busy() on every logic frame
+-- (src/world/gen2/World.lua:11061), and that call is where the mod
+-- re-asserts its own step wrapper once a co-installed mod has reclaimed the
+-- field.  The world double carries its own `busy` field (newWorld), which
+-- shadows the class method, so the class method is named explicitly here:
+-- self:busy() would reach the double's stub instead of the mod's wrapper.
 local stepCalls = 0
-World2.step = function(self, ...)
+local vanillaStepSentinel = function(self, ...)
   stepCalls = stepCalls + 1
+  World2.busy(self)
   return "VANILLA_STEP"
 end
+World2.step = vanillaStepSentinel
 local busyCalls = 0
 World2.busy = function(self, ...)
   busyCalls = busyCalls + 1
@@ -1464,6 +1472,75 @@ do
   drain(world)
   T.eq(#world.npcs, 0, "nor is the middle of the room")
   T.eq(save.inventory.GS_BALL, nil, "and still nothing is handed over")
+end
+
+-- ---- a co-installed mod that reclaims World.step ---------------------------
+--
+-- Wilds of Kanto wraps World.step and then re-installs itself "outermost after
+-- late companion wraps" on mods.loaded and again on game.ready
+-- (lib/follower/init.lua:435 -- restore() then install()).  Its restore writes
+-- the function it captured at load time back over the field
+-- (lib/follower/control_engine.lua:4667), and because it sorts BEFORE this mod
+-- -- priority 80 against 100, and src/mods/Loader.lua:70 walks every phase
+-- priority-ascending, so the lower number installs first -- what it captured
+-- is the ENGINE's own step.  This mod's wrapper is then not nested and not
+-- shadowed: it is deleted.  The receptionist is left standing at the stairs
+-- owing a step to a queue nothing advances any more, while busy() goes on
+-- reporting the world busy, so the player waits with her for ever.  So the
+-- wrapper is re-asserted from busy(), the one seam the other mod never touches.
+do
+  local save = newSave()
+  local world = stepOut(save)
+  tick(world, 1)
+  local npc = receptionist(world)
+  T.check(npc ~= nil, "the receptionist is placed before the other mod acts")
+  T.eq(npc and npc.cellX, STAIRS_X, "at the cart's stairs tile")
+
+  local stepBefore = World2.step
+  local baseBefore = World2.celebi_event_vanilla_step
+  local wildsStepCalls = 0
+  local function wildsStepWrap(self, ...)
+    wildsStepCalls = wildsStepCalls + 1
+    return vanillaStepSentinel(self, ...)
+  end
+
+  -- Both halves of the other mod's re-install, in its own order.
+  World2.step = vanillaStepSentinel
+  T.eq(World2.step, vanillaStepSentinel, "the other mod restores World.step")
+  World2.step = wildsStepWrap
+  T.check(World2.step ~= vanillaStepSentinel, "and then takes it again")
+  T.check(World2.celebi_event_vanilla_step ~= World2.step,
+    "leaving this mod's wrapper off the field entirely")
+
+  -- One logic frame is all the re-assert needs: busy() runs inside the step.
+  tick(world, 1)
+  T.check(World2.step ~= wildsStepWrap,
+    "this mod's wrapper is back on the field after one frame")
+
+  -- ...and it is additive rather than a takeover: the other mod's wrapper is
+  -- still underneath, so its own per-frame work keeps running.
+  local seen = wildsStepCalls
+  tick(world, 1)
+  T.check(wildsStepCalls > seen,
+    "and the other mod's wrapper still runs underneath")
+
+  -- The whole scene, to the hand-over, with the other mod installed throughout.
+  tick(world, 16 * 5)
+  tick(world, 16 * 5)
+  drain(world)
+  T.eq(save.inventory.GS_BALL, 1,
+    "the hand-over completes with the other mod installed")
+  T.eq(stageOf(save), "have", "and the quest still starts")
+  -- ...and the walk back finishes, so the scene really is over: a cutscene
+  -- left open here would make the NEXT scenario's beginSteps decline.
+  tick(world, 16 * 5)
+  tick(world, 16 * 5)
+  drain(world)
+  T.eq(#world.npcs, 0, "and she walks back and is gone, scene complete")
+
+  -- Put the field back, so a later scenario does not read this one's chain.
+  World2.step = stepBefore
+  World2.celebi_event_vanilla_step = baseBefore
 end
 
 -- ---- the interception never eats an unrelated press ------------------------

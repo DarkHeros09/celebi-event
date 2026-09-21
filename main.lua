@@ -2007,18 +2007,107 @@ return function(mod)
   -- The descent's tick.  World:step is what Game2 calls once per logic frame
   -- (src/core/Game2.lua:1272) and it is the only per-frame seam the overworld
   -- offers a mod, so the animation is driven from its tail.
-  local vanillaStep = World2.celebi_event_vanilla_step or World2.step
-  World2.celebi_event_vanilla_step = vanillaStep
-  World2.step = function(self, ...)
-    local result = vanillaStep(self, ...)
-    if cutscene then
-      local okTick, err = pcall(tickCutscene)
-      if not okTick then
-        mod.log:error("cutscene aborted: %s", tostring(err))
-        cutscene = nil
+  --
+  -- World.step is a plain function FIELD, though, and that makes it deletable.
+  -- Wilds of Kanto sorts before this mod -- priority 80 against 100, and
+  -- src/mods/Loader.lua:70 walks every phase priority-ascending, so the lower
+  -- number installs first -- so the step it captures as its "original" is the
+  -- ENGINE's own.  Then on mods.loaded, and again on game.ready,
+  -- Follower:reassertAfterModsLoaded re-installs itself "outermost after late
+  -- companion wraps" (lib/follower/init.lua:435: restore() then install()), and
+  -- ControlEngine:_restoreGen2WorldStepWrap writes that captured original
+  -- straight back over the field (lib/follower/control_engine.lua:4667).  This
+  -- wrapper is then not nested and not shadowed -- it is DELETED, and
+  -- tickCutscene with it.  The receptionist takes her first scripted step and
+  -- never lands it, because nothing advances the queue, while busy() below goes
+  -- on reporting the world busy, so the player waits with her for ever.
+  --
+  -- So the wrapper is re-asserted rather than merely installed, from busy() --
+  -- the one seam here that cannot be taken away, since Wilds only ever restores
+  -- World.step and the PikachuFollower functions, and the engine evaluates
+  -- self:busy() on every World:step (src/world/gen2/World.lua:11061).
+  -- Re-chaining onto whatever is installed at the time keeps the other mod's
+  -- wrapper running underneath, so this stays additive: Wilds' trailer update
+  -- still runs exactly where it did, inside its own wrapper.
+  --
+  -- Every copy this mod installs shares ONE depth counter, so a chain holding
+  -- more than one of them -- re-asserting onto a wrapper that already contains
+  -- an older copy -- still ticks the queue exactly once per frame.  Without it
+  -- the scene would walk at double speed.
+  local stepTickDepth = 0
+  local stepRuns = 0      -- bumped by every copy of the wrapper, on every frame
+  local stepRunsSeen = 0  -- its value at the previous ownership check
+  -- Which functions sitting on World.step are this mod's.  It has to live on
+  -- the class rather than in a module local: a second load of this mod has to
+  -- recognise the wrapper the first load left behind, and a Lua function cannot
+  -- carry a field of its own to be tagged with.
+  World2.celebi_event_step_wrappers = World2.celebi_event_step_wrappers or {}
+  local ourWrappers = World2.celebi_event_step_wrappers
+  local function makeStepWrapper(base)
+    local function wrapper(self, ...)
+      stepRuns = stepRuns + 1
+      stepTickDepth = stepTickDepth + 1
+      local result = { pcall(base, self, ...) }
+      stepTickDepth = stepTickDepth - 1
+      -- Rethrown, not swallowed: a step that threw must still reach whatever
+      -- handles engine errors -- but the depth has to come back down first, or
+      -- the tick would never run again.
+      if not result[1] then error(result[2], 0) end
+      if stepTickDepth == 0 and cutscene then
+        local okTick, err = pcall(tickCutscene)
+        if not okTick then
+          mod.log:error("cutscene aborted: %s", tostring(err))
+          cutscene = nil
+        end
       end
+      return result[2], result[3], result[4], result[5], result[6]
     end
-    return result
+    ourWrappers[wrapper] = true
+    return wrapper
+  end
+  local function stepBaseUnder(step)
+    -- A wrapper left by an earlier load of THIS mod must never be chained onto:
+    -- the two copies keep separate depth counters, so both would tick and the
+    -- scene would walk at double speed.  The stash below is what that copy
+    -- wrapped, and it is what this mod was chaining onto before the reload.
+    if step and ourWrappers[step] then
+      return World2.celebi_event_vanilla_step or step
+    end
+    return step
+  end
+  -- The original is stashed on the class rather than captured from a
+  -- module-local, so a second load of this mod replaces the wrapper with a
+  -- fresh one bound to the new `mod` instead of keeping the first load's
+  -- closure (the trap that makes a re-loaded mod measure the wrong run).
+  local vanillaStep = stepBaseUnder(World2.step)
+  World2.celebi_event_vanilla_step = vanillaStep
+  World2.step = makeStepWrapper(vanillaStep)
+
+  -- Put this mod back on the chain after another mod has reclaimed World.step.
+  local function ensureStepOwner()
+    local current = World2.step
+    if current and ourWrappers[current] then
+      -- Already outermost.  Returning here also covers a busy() that runs
+      -- before the frame's own World:step -- input polling reaches busy() too,
+      -- and wrapping on that call would put the wrapper on top of itself.
+      stepRunsSeen = stepRuns
+      return
+    end
+    if stepRuns ~= stepRunsSeen then
+      -- A copy ran since the last check, so this mod is still somewhere in the
+      -- chain and the queue is being ticked, whoever is outermost.  Leaving it
+      -- alone is also what keeps the chain from growing a layer per map: the
+      -- other mod re-wraps only while it believes it is not the owner, and it
+      -- checks that by identity against the field it left there.
+      stepRunsSeen = stepRuns
+      return
+    end
+    -- Nothing of this mod's ran for a whole logic frame, so the chain no longer
+    -- contains it.  Chain onto what is there now, so the other mod's wrapper
+    -- keeps running underneath.
+    if not current then return end
+    World2.celebi_event_vanilla_step = current
+    World2.step = makeStepWrapper(current)
   end
 
   -- A cutscene with no box up would otherwise leave the world walkable: the
@@ -2029,6 +2118,9 @@ return function(mod)
   local vanillaBusy = World2.celebi_event_vanilla_busy or World2.busy
   World2.celebi_event_vanilla_busy = vanillaBusy
   World2.busy = function(self, ...)
+    -- Above the early return, and on every logic frame either way: a cutscene
+    -- in progress is exactly when the step wrapper must not be missing.
+    ensureStepOwner()
     if cutsceneRunning() then return true end
     return vanillaBusy(self, ...)
   end

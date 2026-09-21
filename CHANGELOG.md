@@ -12,6 +12,16 @@ launcher shows it is `RELEASE_NOTES.md` -- that file is the release *body*, and
 the body is the only changelog text the launcher renders (its **What's New?**
 modal reads the release, never this file).
 
+### 1.4.9 -- runs alongside Wilds of Kanto
+
+- With Wilds of Kanto installed, the GOLDENROD POKeMON CENTER receptionist
+  used to appear at the stairs and never move, and her scene never ended:
+  the other mod reclaims the engine's per-frame step while it loads, which
+  took this mod's own tick away with it. The tick is now put back
+  automatically, whichever mod loads last.
+- The scene itself is unchanged -- the same lines, the same movements and
+  the same tiles. Only the engine seam it runs on is re-asserted.
+
 ### 1.4.8 -- KURT's exit and the GS BALL hand-back are one scene
 
 - The world stays locked from the moment KURT runs out of his house until the
